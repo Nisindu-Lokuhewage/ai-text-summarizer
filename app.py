@@ -34,8 +34,8 @@ if st.button("✨ **Summarize**", type="primary"):
                 # Configure Gemini
                 genai.configure(api_key=api_key)
                 
-                # Use correct model
-                model = genai.GenerativeModel('models/gemini-1.5-flash')
+                # CORRECT MODEL NAME - using the working one
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 # Create prompt
                 prompt = f"""Summarize the following text in {length_map[length]}. Keep the key information and main points.
