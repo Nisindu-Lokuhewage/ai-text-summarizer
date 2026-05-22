@@ -1,69 +1,72 @@
 import streamlit as st
 import requests
-import time
+import json
 
 st.set_page_config(page_title="AI Summarizer", page_icon="📝")
 
 st.title("📝 AI Text Summarizer")
-st.markdown("Powered by **Free AI** - Just paste your text!")
+st.markdown("Powered by **OpenRouter AI** - Free and works globally!")
+
+# API Key input (free from openrouter.ai)
+api_key = st.text_input("🔑 **OpenRouter API Key**", type="password", help="Get free key from https://openrouter.ai/keys")
 
 # Text input
-input_text = st.text_area("📄 **Text to summarize**", height=200, placeholder="Paste or type your text here...")
+input_text = st.text_area("📄 **Text to summarize**", height=200, placeholder="Paste your text here...")
 
-# Summary length option
+# Summary length
 length = st.select_slider("📏 **Summary length**", options=["Short", "Medium", "Detailed"], value="Short")
 
+length_prompt = {
+    "Short": "in 2-3 sentences",
+    "Medium": "in 4-5 sentences",
+    "Detailed": "in 6-8 sentences"
+}
+
 if st.button("✨ **Summarize**", type="primary"):
-    if not input_text.strip():
+    if not api_key:
+        st.error("❌ Please enter your OpenRouter API key (free from openrouter.ai)")
+    elif not input_text.strip():
         st.warning("⚠️ Please enter some text to summarize")
     else:
-        with st.spinner("🤖 Summarizing..."):
+        with st.spinner("🤖 AI is summarizing..."):
             try:
-                # Use a different free API that doesn't require API key
-                # This is a public summarization endpoint
+                # OpenRouter API call
+                response = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    data=json.dumps({
+                        "model": "google/gemini-2.0-flash-exp:free",  # Free Gemini model
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": f"Summarize the following text {length_prompt[length]}. Keep the key information.\n\nText: {input_text}\n\nSummary:"
+                            }
+                        ]
+                    })
+                )
                 
-                payload = {
-                    "text": input_text,
-                    "max_length": 200 if length == "Short" else 300 if length == "Medium" else 500,
-                    "min_length": 50
-                }
+                result = response.json()
                 
-                # Try multiple free endpoints
-                endpoints = [
-                    "https://text-summarizer-api.p.rapidapi.com/summarize",  # requires key
-                    "https://api.meaningcloud.com/summarizer-1.0"  # requires key
-                ]
-                
-                # Since free public APIs often need keys, let's use a different approach
-                
-                # Create a simple extractive summary (no API needed!)
-                sentences = input_text.replace('\n', ' ').split('. ')
-                word_count = len(input_text.split())
-                
-                # Simple algorithm: take first few sentences for summary
-                if length == "Short":
-                    num_sentences = 2
-                elif length == "Medium":
-                    num_sentences = 3
+                if "choices" in result:
+                    summary = result["choices"][0]["message"]["content"]
+                    
+                    st.success("✅ **Summary Ready!**")
+                    st.write(summary)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Original", f"{len(input_text.split())} words")
+                    with col2:
+                        st.metric("Summary", f"{len(summary.split())} words")
                 else:
-                    num_sentences = 5
-                
-                summary = '. '.join(sentences[:num_sentences]) + '.'
-                
-                st.success("✅ **Summary Ready!**")
-                st.write(summary)
-                
-                # Show stats
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Original", f"{len(input_text.split())} words")
-                with col2:
-                    st.metric("Summary", f"{len(summary.split())} words")
-                
-                st.info("💡 **Note:** Using basic summarization. For AI-powered results, we need a working API.")
-                
+                    error_msg = result.get("error", {}).get("message", "Unknown error")
+                    st.error(f"API Error: {error_msg}")
+                    
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
 st.markdown("---")
-st.markdown("📝 **Pro tip:** For better AI summaries, we can add a free API key from a working provider.")
+st.markdown("Get your free API key at [OpenRouter](https://openrouter.ai/keys)")
