@@ -2,58 +2,57 @@ import streamlit as st
 import requests
 import json
 
-st.set_page_config(page_title="AI Summarizer", page_icon="📝")
+st.set_page_config(page_title="AI Summarizer", page_icon="🤖")
 
-st.title("📝 AI Text Summarizer")
-st.markdown("Powered by **OpenRouter Free AI Models**")
+st.title("🤖 AI Text Summarizer")
+st.markdown("Powered by **Google Gemini AI** via free API")
 
-# API Key input (free from openrouter.ai)
-api_key = st.text_input("🔑 **OpenRouter API Key**", type="password", help="Get free key from https://openrouter.ai/keys")
+# Gemini API key (get from https://aistudio.google.com)
+api_key = st.text_input("🔑 **Google Gemini API Key**", type="password", 
+                       help="Get free key from Google AI Studio")
 
-# Text input
-input_text = st.text_area("📄 **Text to summarize**", height=200, placeholder="Paste your text here...")
+input_text = st.text_area("📄 **Text to summarize**", height=200)
 
-# Summary length
-length = st.select_slider("📏 **Summary length**", options=["Short", "Medium", "Detailed"], value="Short")
+length = st.select_slider("📏 **Summary length**", 
+                         options=["Short (2-3 sentences)", "Medium (4-5)", "Detailed (6-8)"],
+                         value="Short")
 
-length_prompt = {
-    "Short": "in 2-3 sentences",
-    "Medium": "in 4-5 sentences",
-    "Detailed": "in 6-8 sentences"
+# Map length to max_tokens
+token_map = {
+    "Short (2-3 sentences)": 80,
+    "Medium (4-5 sentences)": 150,
+    "Detailed (6-8 sentences)": 250
 }
 
-if st.button("✨ **Summarize**", type="primary"):
+if st.button("✨ **Summarize with Gemini**", type="primary"):
     if not api_key:
-        st.error("❌ Please enter your OpenRouter API key")
+        st.error("❌ Please enter your Gemini API key")
     elif not input_text.strip():
-        st.warning("⚠️ Please enter some text to summarize")
+        st.warning("⚠️ Please enter text to summarize")
     else:
-        with st.spinner("🤖 AI is summarizing..."):
+        with st.spinner("🧠 Gemini AI is thinking..."):
             try:
-                # Using auto-router - always picks a working free model
-                response = requests.post(
-                    url="https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    data=json.dumps({
-                        "model": "openrouter/free",  # ✅ This always works!
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": f"Summarize the following text {length_prompt[length]}. Keep the key information.\n\nText: {input_text}\n\nSummary:"
-                            }
-                        ]
-                    })
-                )
+                # ✅ DIRECT Google Gemini API call (not through OpenRouter)
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
                 
+                payload = {
+                    "contents": [{
+                        "parts": [{
+                            "text": f"Summarize this text in {length.lower()}. Keep key facts only.\n\nText: {input_text}\n\nSummary:"
+                        }]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.3,
+                        "maxOutputTokens": token_map[length]
+                    }
+                }
+                
+                response = requests.post(url, json=payload, timeout=30)
                 result = response.json()
                 
-                if "choices" in result:
-                    summary = result["choices"][0]["message"]["content"]
-                    
-                    st.success("✅ **Summary Ready!**")
+                if "candidates" in result:
+                    summary = result["candidates"][0]["content"]["parts"][0]["text"]
+                    st.success("✅ **Gemini Summary**")
                     st.write(summary)
                     
                     col1, col2 = st.columns(2)
@@ -62,11 +61,12 @@ if st.button("✨ **Summarize**", type="primary"):
                     with col2:
                         st.metric("Summary", f"{len(summary.split())} words")
                 else:
-                    error_msg = result.get("error", {}).get("message", "Unknown error")
-                    st.error(f"API Error: {error_msg}")
+                    error = result.get("error", {}).get("message", "Unknown error")
+                    st.error(f"Gemini API Error: {error}")
                     
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Connection error: {str(e)}")
+                st.info("💡 Streamlit Cloud may be blocking the request. Try the fallback below.")
 
 st.markdown("---")
-st.markdown("Get your free API key at [OpenRouter](https://openrouter.ai/keys)")
+st.markdown("Get your free Gemini API key at [Google AI Studio](https://aistudio.google.com)")
