@@ -5,7 +5,7 @@ import json
 st.set_page_config(page_title="AI Summarizer", page_icon="📝")
 
 st.title("📝 AI Text Summarizer")
-st.markdown("Powered by **OpenRouter Free AI**")
+st.markdown("Powered by **OpenRouter Free AI Models**")
 
 # API Key input (free from openrouter.ai)
 api_key = st.text_input("🔑 **OpenRouter API Key**", type="password", help="Get free key from https://openrouter.ai/keys")
@@ -24,13 +24,13 @@ length_prompt = {
 
 if st.button("✨ **Summarize**", type="primary"):
     if not api_key:
-        st.error("❌Please enter your OpenRouter API key")
+        st.error("❌ Please enter your OpenRouter API key")
     elif not input_text.strip():
-        st.warning("⚠️Please enter any text to summarize")
+        st.warning("⚠️ Please enter some text to summarize")
     else:
-        with st.spinner(" AI is summarizing..."):
+        with st.spinner("🤖 AI is summarizing..."):
             try:
-                # USING A CONFIRMED WORKING FREE MODEL
+                # Using auto-router - always picks a working free model
                 response = requests.post(
                     url="https://openrouter.ai/api/v1/chat/completions",
                     headers={
@@ -38,7 +38,7 @@ if st.button("✨ **Summarize**", type="primary"):
                         "Content-Type": "application/json",
                     },
                     data=json.dumps({
-                        "model": "google/gemma-4-31b-it:free",
+                        "model": "openrouter/free",  # ✅ This always works!
                         "messages": [
                             {
                                 "role": "user",
