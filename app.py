@@ -5,7 +5,7 @@ import json
 st.set_page_config(page_title="AI Summarizer", page_icon="🤖")
 
 st.title("🤖 AI Text Summarizer")
-st.markdown("Powered by **Google Gemini AI** via free API")
+st.markdown("Powered by **Google Gemini 3.5 Flash** (Free Tier)")
 
 # Gemini API key (get from https://aistudio.google.com)
 api_key = st.text_input("🔑 **Google Gemini API Key**", type="password", 
@@ -44,8 +44,8 @@ if st.button("✨ **Summarize with Gemini**", type="primary"):
     else:
         with st.spinner("🧠 Gemini AI is thinking..."):
             try:
-                # Direct Google Gemini API call
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                # ✅ UPDATED: Using gemini-3.5-flash (the current free-tier model)
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
                 
                 payload = {
                     "contents": [{
