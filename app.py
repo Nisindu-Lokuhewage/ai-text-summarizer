@@ -1,15 +1,11 @@
 import streamlit as st
 import requests
-import json
+import time
 
 st.set_page_config(page_title="AI Summarizer", page_icon="🤖")
 
 st.title("🤖 AI Text Summarizer")
-st.markdown("Powered by **Google Gemini 3.5 Flash** (Free Tier)")
-
-# Gemini API key
-api_key = st.text_input("🔑 **Google Gemini API Key**", type="password", 
-                       help="Get free key from Google AI Studio")
+st.markdown("Powered by **Facebook BART** - Professional AI Summarization")
 
 # Text input
 input_text = st.text_area("📄 **Text to summarize**", height=200, 
@@ -18,64 +14,60 @@ input_text = st.text_area("📄 **Text to summarize**", height=200,
 # Summary length
 length = st.radio(
     "📏 **Summary length**",
-    options=["Short", "Medium", "Detailed"],
+    options=["Short (2-3 sentences)", "Medium (4-5 sentences)", "Detailed (6-8 sentences)"],
     index=0
 )
 
-# Map length settings
+# Map length to parameters
 settings = {
-    "Short": {"sentences": "2-3 sentences", "tokens": 100},
-    "Medium": {"sentences": "4-5 sentences", "tokens": 180},
-    "Detailed": {"sentences": "6-8 sentences", "tokens": 300}
+    "Short (2-3 sentences)": {"min": 30, "max": 80},
+    "Medium (4-5 sentences)": {"min": 50, "max": 150},
+    "Detailed (6-8 sentences)": {"min": 80, "max": 250}
 }
 
-if st.button("✨ **Summarize with Gemini**", type="primary"):
-    if not api_key:
-        st.error("❌ Please enter your Gemini API key")
-    elif not input_text.strip():
+@st.cache_data(ttl=60)
+def get_summary(text, min_len, max_len):
+    """Call Hugging Face's free summarization API"""
+    API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+    
+    payload = {
+        "inputs": text,
+        "parameters": {
+            "max_length": max_len,
+            "min_length": min_len,
+            "do_sample": False,
+            "clean_up_tokenization_spaces": True
+        }
+    }
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
+    
+    if response.status_code == 200:
+        result = response.json()
+        if isinstance(result, list) and len(result) > 0:
+            return result[0].get('summary_text', str(result))
+        return str(result)
+    else:
+        return None
+
+if st.button("✨ **Summarize with AI**", type="primary"):
+    if not input_text.strip():
         st.warning("⚠️ Please enter text to summarize")
     else:
-        with st.spinner("🧠 Gemini AI is thinking..."):
+        with st.spinner("🤖 AI is analyzing and summarizing..."):
             try:
-                # Improved prompt for better summaries
-                prompt = f"""You are a helpful summarization assistant. Summarize the text below in {settings[length]['sentences']}. 
-
-IMPORTANT RULES:
-- Write complete, readable sentences
-- Keep the most important facts
-- Don't be too short - use {settings[length]['sentences']} as a guide
-- Don't add new information not in the text
-
-Text to summarize:
-{input_text}
-
-Summary:"""
+                summary = get_summary(
+                    input_text, 
+                    settings[length]["min"], 
+                    settings[length]["max"]
+                )
                 
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-                
-                payload = {
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.5,
-                        "maxOutputTokens": settings[length]["tokens"],
-                        "topP": 0.9
-                    }
-                }
-                
-                response = requests.post(url, json=payload, timeout=30)
-                result = response.json()
-                
-                if "candidates" in result:
-                    summary = result["candidates"][0]["content"]["parts"][0]["text"]
-                    
-                    # Clean up the summary if needed
-                    summary = summary.strip()
-                    if len(summary.split()) < 10 and len(input_text.split()) > 30:
-                        st.warning("⚠️ Summary was too short. Click Summarize again - the AI sometimes needs a second try.")
-                    
-                    st.success("✅ **Gemini Summary**")
+                if summary:
+                    st.success("✅ **AI Summary**")
                     st.write(summary)
                     
                     col1, col2 = st.columns(2)
@@ -84,12 +76,14 @@ Summary:"""
                     with col2:
                         st.metric("Summary", f"{len(summary.split())} words")
                 else:
-                    error = result.get("error", {}).get("message", "Unknown error")
-                    st.error(f"Gemini API Error: {error}")
+                    st.error("⚠️ API is busy. Free tier has rate limits. Please wait 10 seconds and try again.")
                     
+            except requests.exceptions.Timeout:
+                st.error("⏰ Request timed out. The free API is busy. Try again in 15 seconds.")
             except Exception as e:
-                st.error(f"Connection error: {str(e)}")
+                st.error(f"Error: {str(e)}")
+                st.info("💡 The free API has rate limits. Click 'Summarize' again in a few seconds.")
 
 st.markdown("---")
-st.markdown("💡 **Pro tip:** If the summary is too short, click Summarize again - free tier sometimes needs a second try.")
-st.markdown("Get your free Gemini API key at [Google AI Studio](https://aistudio.google.com)")
+st.markdown("💡 **Note:** Using free Hugging Face API. If busy, wait 10 seconds and try again.")
+st.markdown("Powered by **Facebook BART-large-CNN** - A professional summarization model")
