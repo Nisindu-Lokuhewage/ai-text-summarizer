@@ -24,11 +24,11 @@ length_prompt = {
 
 if st.button("✨ **Summarize**", type="primary"):
     if not api_key:
-        st.error("❌ Please enter your OpenRouter API key")
+        st.error("❌Please enter your OpenRouter API key")
     elif not input_text.strip():
-        st.warning("⚠️ Please enter some text to summarize")
+        st.warning("⚠️Please enter any text to summarize")
     else:
-        with st.spinner("🤖 AI is summarizing..."):
+        with st.spinner(" AI is summarizing..."):
             try:
                 # USING A CONFIRMED WORKING FREE MODEL
                 response = requests.post(
@@ -38,7 +38,7 @@ if st.button("✨ **Summarize**", type="primary"):
                         "Content-Type": "application/json",
                     },
                     data=json.dumps({
-                        "model": "mistralai/mistral-7b-instruct:free",
+                        "model": "google/gemma-4-31b-it:free",
                         "messages": [
                             {
                                 "role": "user",
