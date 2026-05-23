@@ -11,17 +11,29 @@ st.markdown("Powered by **Google Gemini AI** via free API")
 api_key = st.text_input("🔑 **Google Gemini API Key**", type="password", 
                        help="Get free key from Google AI Studio")
 
-input_text = st.text_area("📄 **Text to summarize**", height=200)
+# Text input
+input_text = st.text_area("📄 **Text to summarize**", height=200, 
+                         placeholder="Paste your text here...")
 
-length = st.select_slider("📏 **Summary length**", 
-                         options=["Short (2-3 sentences)", "Medium (4-5)", "Detailed (6-8)"],
-                         value="Short")
+# Summary length - USING RADIO BUTTONS INSTEAD (more reliable)
+length = st.radio(
+    "📏 **Summary length**",
+    options=["Short (2-3 sentences)", "Medium (4-5 sentences)", "Detailed (6-8 sentences)"],
+    index=0  # 0 = Short selected by default
+)
 
 # Map length to max_tokens
 token_map = {
     "Short (2-3 sentences)": 80,
     "Medium (4-5 sentences)": 150,
     "Detailed (6-8 sentences)": 250
+}
+
+# Map length for prompt
+prompt_map = {
+    "Short (2-3 sentences)": "2-3 sentences",
+    "Medium (4-5 sentences)": "4-5 sentences",
+    "Detailed (6-8 sentences)": "6-8 sentences"
 }
 
 if st.button("✨ **Summarize with Gemini**", type="primary"):
@@ -32,13 +44,13 @@ if st.button("✨ **Summarize with Gemini**", type="primary"):
     else:
         with st.spinner("🧠 Gemini AI is thinking..."):
             try:
-                # ✅ DIRECT Google Gemini API call (not through OpenRouter)
+                # Direct Google Gemini API call
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
                 
                 payload = {
                     "contents": [{
                         "parts": [{
-                            "text": f"Summarize this text in {length.lower()}. Keep key facts only.\n\nText: {input_text}\n\nSummary:"
+                            "text": f"Summarize this text in {prompt_map[length]}. Keep key facts only.\n\nText: {input_text}\n\nSummary:"
                         }]
                     }],
                     "generationConfig": {
@@ -63,10 +75,10 @@ if st.button("✨ **Summarize with Gemini**", type="primary"):
                 else:
                     error = result.get("error", {}).get("message", "Unknown error")
                     st.error(f"Gemini API Error: {error}")
+                    st.info("💡 Make sure you've enabled the Gemini API in Google Cloud Console")
                     
             except Exception as e:
                 st.error(f"Connection error: {str(e)}")
-                st.info("💡 Streamlit Cloud may be blocking the request. Try the fallback below.")
 
 st.markdown("---")
 st.markdown("Get your free Gemini API key at [Google AI Studio](https://aistudio.google.com)")
