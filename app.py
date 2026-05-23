@@ -38,7 +38,7 @@ if st.button("✨ **Summarize**", type="primary"):
                         "Content-Type": "application/json",
                     },
                     data=json.dumps({
-                        "model": "google/gemma-4-31b-it:free",  # ✅ Confirmed working free model
+                        "model": "mistralai/mistral-7b-instruct:free",
                         "messages": [
                             {
                                 "role": "user",
