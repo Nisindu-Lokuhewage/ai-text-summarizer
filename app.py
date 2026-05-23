@@ -1,11 +1,25 @@
 import streamlit as st
 import requests
-import time
+import json
+import os
 
 st.set_page_config(page_title="AI Summarizer", page_icon="🤖")
 
 st.title("🤖 AI Text Summarizer")
-st.markdown("Powered by **Facebook BART** - Professional AI Summarization")
+st.markdown("Powered by **Google Gemini AI**")
+
+# Try to get API key from environment variable (Render) first
+# If not found, fall back to user input (for local testing)
+api_key = os.environ.get("GEMINI_API_KEY", "")
+
+# If no environment variable, ask user to input
+if not api_key:
+    api_key = st.text_input("🔑 **Google Gemini API Key**", type="password", 
+                           help="Get free key from Google AI Studio")
+    
+    if not api_key:
+        st.warning("⚠️ Please enter your Gemini API key to continue")
+        st.stop()
 
 # Text input
 input_text = st.text_area("📄 **Text to summarize**", height=200, 
@@ -20,54 +34,43 @@ length = st.radio(
 
 # Map length to parameters
 settings = {
-    "Short (2-3 sentences)": {"min": 30, "max": 80},
-    "Medium (4-5 sentences)": {"min": 50, "max": 150},
-    "Detailed (6-8 sentences)": {"min": 80, "max": 250}
+    "Short (2-3 sentences)": {"prompt": "2-3 sentences", "tokens": 100},
+    "Medium (4-5 sentences)": {"prompt": "4-5 sentences", "tokens": 180},
+    "Detailed (6-8 sentences)": {"prompt": "6-8 sentences", "tokens": 300}
 }
 
-@st.cache_data(ttl=60)
-def get_summary(text, min_len, max_len):
-    """Call Hugging Face's free summarization API"""
-    API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
-    
-    payload = {
-        "inputs": text,
-        "parameters": {
-            "max_length": max_len,
-            "min_length": min_len,
-            "do_sample": False,
-            "clean_up_tokenization_spaces": True
-        }
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
-    
-    if response.status_code == 200:
-        result = response.json()
-        if isinstance(result, list) and len(result) > 0:
-            return result[0].get('summary_text', str(result))
-        return str(result)
-    else:
-        return None
-
-if st.button("✨ **Summarize with AI**", type="primary"):
+if st.button("✨ **Summarize with Gemini**", type="primary"):
     if not input_text.strip():
         st.warning("⚠️ Please enter text to summarize")
     else:
-        with st.spinner("🤖 AI is analyzing and summarizing..."):
+        with st.spinner("🧠 Gemini AI is thinking..."):
             try:
-                summary = get_summary(
-                    input_text, 
-                    settings[length]["min"], 
-                    settings[length]["max"]
-                )
+                # Google Gemini API call
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
                 
-                if summary:
-                    st.success("✅ **AI Summary**")
+                prompt = f"""Summarize the following text in {settings[length]['prompt']}. Keep the key information.
+
+Text: {input_text}
+
+Summary:"""
+                
+                payload = {
+                    "contents": [{
+                        "parts": [{"text": prompt}]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.5,
+                        "maxOutputTokens": settings[length]["tokens"]
+                    }
+                }
+                
+                response = requests.post(url, json=payload, timeout=30)
+                result = response.json()
+                
+                if "candidates" in result:
+                    summary = result["candidates"][0]["content"]["parts"][0]["text"]
+                    
+                    st.success("✅ **Gemini Summary**")
                     st.write(summary)
                     
                     col1, col2 = st.columns(2)
@@ -76,14 +79,11 @@ if st.button("✨ **Summarize with AI**", type="primary"):
                     with col2:
                         st.metric("Summary", f"{len(summary.split())} words")
                 else:
-                    st.error("⚠️ API is busy. Free tier has rate limits. Please wait 10 seconds and try again.")
+                    error = result.get("error", {}).get("message", "Unknown error")
+                    st.error(f"Gemini API Error: {error}")
                     
-            except requests.exceptions.Timeout:
-                st.error("⏰ Request timed out. The free API is busy. Try again in 15 seconds.")
             except Exception as e:
-                st.error(f"Error: {str(e)}")
-                st.info("💡 The free API has rate limits. Click 'Summarize' again in a few seconds.")
+                st.error(f"Connection error: {str(e)}")
 
 st.markdown("---")
-st.markdown("💡 **Note:** Using free Hugging Face API. If busy, wait 10 seconds and try again.")
-st.markdown("Powered by **Facebook BART-large-CNN** - A professional summarization model")
+st.markdown("💡 **Note:** Your API key is securely stored on Render")
